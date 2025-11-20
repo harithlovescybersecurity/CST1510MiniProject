@@ -2,21 +2,28 @@ import bcrypt
 import os
 
 def hash_password(plain_text_password):
+    # Converting password to bytes
     password_bytes = plain_text_password.encode("utf-8")
+    # using salt for security
     salt = bcrypt.gensalt()
+    # using salt to hash the password
     hashed_password = bcrypt.hashpw(password_bytes, salt)
     return hashed_password.decode("utf-8")
 
 def verify_password(plain_text_password, hashed_password):
+    #converting both the inputs to bytes
     password_bytes = plain_text_password.encode("utf-8")
     hashed_bytes = hashed_password.encode("utf-8")
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
-USER_DATA_FILE = 'users.txt'
+#used to store user information
+USER_DATA_FILE = '../../DATA/users.txt'
 
 def user_exists(username):
+    # if the user data file doesnt exist then no users are registered
     if not os.path.exists(USER_DATA_FILE):
         return False
+    # opens the file to check for username
     with open(USER_DATA_FILE, "r") as file:
         for line in file:
             stored_username = line.strip().split(",")[0]
@@ -24,35 +31,40 @@ def user_exists(username):
                 return True
     return False
 
+#checks if username exists
 def register_user(username, password):
     if user_exists(username):
         return False
-
+    # hashing the password
     hashed_password = hash_password(password)
-
+    # adds the new user to the file
     with open(USER_DATA_FILE, "a") as file:
         file.write(f"{username},{hashed_password}\n")
     return True
 
 def login_user(username, password):
+    # if no user data file exists then no users are registered
     if not os.path.exists(USER_DATA_FILE):
         return False
-
+    # searching for username in file
     with open(USER_DATA_FILE, 'r') as file:
         for line in file:
             parts = line.strip().split(',')
             if parts[0] == username:
                 stored_hash = parts[1]
+                # verifies the provided password with stored hash
                 return verify_password(password, stored_hash)
 
     return False
 
 def validate_username(username):
+    # username has to be atleast 3 characters long
     if len(username) < 3:
         return False,
     return True, ""
 
 def validate_password(password):
+    # password must be atleast 6 characters long
     if len(password) < 6:
         return False,
     return True, ""
@@ -73,6 +85,7 @@ def main():
     print("\nWelcome to the Week 7 Authentication System!")
 
     while True:
+        # displays menu options to get user input
         display_menu()
         choice = input("\nPlease select an option (1-3): ").strip()
 
@@ -81,14 +94,16 @@ def main():
             print("\n--- User Registration ---")
             username = input("Enter a username: ").strip()
 
+            # username must meet requirements
             is_valid, error_msg = validate_username(username)
             if not is_valid:
                 print(f"Error: {error_msg}")
+                # keeps looping if validation fails
                 continue
 
             password = input("Enter a password: ").strip()
 
-            # Validate password
+            # Validate password meets security requirements
             is_valid, error_msg = validate_password(password)
             if not is_valid:
                 print(f"Error: {error_msg}")
@@ -125,6 +140,7 @@ def main():
             print("\nError: Invalid option. Please select 1, 2, or 3.")
 
 if __name__ == "__main__":
+    # program entry point
     main()
 
 
