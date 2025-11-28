@@ -80,6 +80,62 @@ def get_incident_by_id(incident_id):
     conn.close()
     return incident
 
+def add_incident_to_db(t, s, sts, d, u):
+    if not t or not d:
+        return False, "Required fields are missing"
+    conn= get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO cyber_incidents (date, incident_type, severity, status, description, reported_by) VALUES (?, ?, ?, ?, ?, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), t, s, sts, d, u))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return True, new_id
+
+def update_incident(incident_id, incident_type, severity, status,description):
+    if not incident_type or not description:
+        return False, "Required fields are missing"
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE cyber_incidents SET incident_type = ?, severity = ?, status = ?, description = ? WHERE id = ?", (incident_type, severity, status, description, incident_id))
+    conn.commit()
+    conn.close()
+    return True, "Updated"
+
+def update_status(incident_id, status):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE cyber_incidents SET status = ? WHERE id = ?", (status, incident_id))
+    conn.commit()
+    conn.close()
+    return True, "Status updated"
+
+def remove_incident(incident_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM cyber_incidents WHERE id = ?", (incident_id,))
+    conn.commit()
+    conn.close()
+    return True, "Deleted"
+
+def get_all_users():
+    conn = get_db()
+    df = pd.read_sql("SELECT id, username, role FROM users", conn)
+    conn.close()
+    return df
+
+def update_user_role(user_id, new_role):
+    if new_role not in ["user", "analyst", "admin"]:
+        return False, "Invalid role"
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+    conn.commit()
+    conn.close()
+    return True, "Role updated"
+
+
+
+
 
 
 
