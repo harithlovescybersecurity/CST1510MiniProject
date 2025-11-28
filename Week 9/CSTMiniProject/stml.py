@@ -7,3 +7,79 @@ import bcrypt
 #page set up
 st.set_page_config(page_title="Security App", layout="wide")
 if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user" not in st.session_state:
+    st.session_state.user = None
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+#gettingg the database functions
+def get_db():
+    return sqlite3.connect("DATA/intelligence_platform.db")
+
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'user'
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cyber_incidents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            incident_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            status TEXT NOT NULL,
+            description TEXT,
+            reported_by TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def check_login(u,p):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password_hash, role FROM users WHERE username=?",(u,))
+    user = cursor.fetchone()
+    conn.close()
+    if user and bcrypt.checkpw(p.encode("utf-8"), user[0].encode("utf-8")):
+        return True, user[1]
+    return False, None
+
+def create_user(u, p, role="user"):
+    if not u or not p or len(p) < 8 or ' ' in u or not u.isalnum():
+        return False, "Invalid input"
+    conn = get_db()
+    cursor = conn.cursor()
+    if cursor.execute("SELECT username FROM users WHERE username=?", (u,)).fetchone():
+        return False, "Username already exits"
+    pw_hash = bcrypt.hashpw(p.encode("utf-8"), bcrypt.gensalt())
+    cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (u, pw_hash.decode("utf-8"), role))
+    conn.commit()
+    conn.close()
+    return True, "User created"
+
+#implementing the CRUD functions
+def get_incidents():
+    conn = get_db()
+    df = pd.read_sql_query("SELECT * FROM cyber_incidents ORDER BY id DESC", conn)
+    conn.close()
+    return df
+
+def get_incident_by_id(incident_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cyber_incidents WHERE id = ?", (incident_id,))
+    incident = cursor.fetchone()
+    conn.close()
+    return incident
+
+
+
+
