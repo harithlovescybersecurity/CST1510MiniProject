@@ -313,8 +313,7 @@ def main():
                     st.write("**Update User Role**")
                     user_id = st.selectbox("Select User", users_data['id'].tolist(), key="user_update")
                     current_role = users_data[users_data['id'] == user_id]['role'].iloc[0]
-                    new_role = st.selectbox("New Role", ["user", "analyst", "admin"],
-                                            index=["user", "analyst", "admin"].index(current_role))
+                    new_role = st.selectbox("New Role", ["user", "analyst", "admin"],index=["user", "analyst", "admin"].index(current_role))
 
                     if st.button("Update Role"):
                         success, msg = update_user_role(user_id, new_role)
@@ -340,7 +339,7 @@ def main():
                     else:
                         st.info("No other users to delete")
 
-            # Logout button
+        #logout button
         if st.sidebar.button("Logout"):
             st.session_state.logged_in = False
             st.session_state.user = None
