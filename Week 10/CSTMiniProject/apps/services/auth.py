@@ -1,6 +1,3 @@
-import bcrypt
-import os
-
 def hash_password(plain_text_password):
     # Converting password to bytes
     password_bytes = plain_text_password.encode("utf-8")
