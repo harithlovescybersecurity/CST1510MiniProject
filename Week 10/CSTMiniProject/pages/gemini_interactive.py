@@ -1,36 +1,58 @@
+import streamlit as st
 import google.generativeai as genai
 
+st.set_page_config(page_title="Gemini Interactive", layout="wide")
+
+#added login function
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.error("Please login first")
+    st.stop()
+
 #configure the API key
-genai.configure(api_key="AIzaSyB9IQr1sHlMgqPiXcjwwn6ca7BxADPJ7xA")
+genai.configure(api_key="key")
 
 #initialize conversation history
-messages = [{"role": "user", "parts": ["You are a helpful assistant"]}]
-print("Gemini Console Chat (type 'quit' to exit)")
-print("-" * 50)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-while True:
-    #get user input
-    user_input = input("You:")
+st.title("Gemini Interactive")
+st.write("Type 'quit' to exit")
+st.write("-" * 50)
 
-    #exit condition
+#Display chat history
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.write(f"**You:** {msg['parts'][0]}")
+    else:
+        st.write(f"**AI:** {msg['parts'][0]}")
+    st.write("")
+
+#get user input
+user_input = st.chat_input("Type your message...")
+
+#exit condition
+if user_input:
     if user_input.lower() == 'quit':
-        print("Goodbye!")
-        break
+        st.write("Goodbye!")
+        st.stop()
 
     #add user message to history
-    messages.append({"role": "user", "parts": [user_input]})
+    st.session_state.messages.append({"role": "user", "parts": [user_input]})
 
     try:
         #get AI response
-        response = genai.GenerativeModel("gemini-2.5-flash").generate_content(messages)
+        response = genai.GenerativeModel("gemini-2.5-flash").generate_content(user_input)
 
         #extract response
         assistant_message = response.text
 
         #add assistant response to history
-        messages.append({"role": "model", "parts": [assistant_message]})
+        st.session_state.messages.append({"role": "model", "parts": [assistant_message]})
 
         #display response
-        print(f"AI: {assistant_message}\n")
+        st.write(f"AI: {assistant_message}\n")
+        st.rerun()
+
     except Exception as e:
-        print(f"Error: {e}\n")
+        st.write(f"Error: {e}\n")
+        st.rerun()

@@ -131,7 +131,6 @@ def get_incidents():
     conn.close()
     return df
 
-
 def get_incident_by_id(incident_id):
     conn = get_db()
     cursor = conn.cursor()
