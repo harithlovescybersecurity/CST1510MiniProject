@@ -68,11 +68,9 @@ def load_excel_to_database():
     except Exception as e:
         return False, f"Error loading Excel data: {str(e)[:100]}"
 
-
 # Getting the database functions
 def get_db():
     return sqlite3.connect("DATA/intelligence_platform.db")
-
 
 def init_db():
     conn = get_db()
@@ -141,7 +139,6 @@ def get_incident_by_id(incident_id):
     incident = cursor.fetchone()
     conn.close()
     return incident
-
 
 def add_incident_to_db(t, s, sts, d, u):
     if not t or not d:
@@ -289,19 +286,19 @@ def main():
                 filtered_data = get_cyber_excel_data()
                 if filtered_data.empty:
                     filtered_data = data  # Fallback to database
-                st.info("📊 Showing cyber incidents")
+                st.info("Showing cyber incidents")
 
             elif domain == "Data":
                 filtered_data = get_datasets_metadata()
                 if filtered_data.empty:
                     filtered_data = pd.DataFrame()  # Empty if no data
-                st.info("📊 Showing datasets metadata")
+                st.info("Showing datasets metadata")
 
             else:  # IT domain
                 filtered_data = get_it_tickets_excel()
                 if filtered_data.empty:
                     filtered_data = pd.DataFrame()  # Empty if no data
-                st.info("📊 Showing IT tickets")
+                st.info("Showing IT tickets")
 
             # Smart metrics - SIMPLIFIED
             col1, col2, col3 = st.columns(3)
@@ -396,12 +393,12 @@ def main():
                     incident = get_incident_by_id(del_incident_id)
 
                     if incident:
-                        st.warning(f"⚠️ Delete Incident #{del_incident_id}?")
+                        st.warning(f"Delete Incident #{del_incident_id}?")
                         st.write(f"**Type:** {incident[2]}")
                         st.write(f"**Severity:** {incident[3]}")
                         st.write(f"**Status:** {incident[4]}")
 
-                        if st.form_submit_button("🗑️ Confirm Delete"):
+                        if st.form_submit_button("Confirm Delete"):
                             success, msg = remove_incident(del_incident_id)
                             if success:
                                 st.success(msg)
