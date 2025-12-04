@@ -3,8 +3,9 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import bcrypt
+import os
 
-#page set up
+# Page setup
 st.set_page_config(page_title="Security App", layout="wide")
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -13,9 +14,65 @@ if "user" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = None
 
-#gettingg the database functions
+
+# Data access functions
+def get_excel_data(file_path):
+    """Read data from Excel file"""
+    try:
+        if os.path.exists(file_path):
+            df = pd.read_excel(file_path)
+            return df
+        else:
+            return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error reading {file_path}: {str(e)[:100]}")
+        return pd.DataFrame()
+
+
+def get_cyber_excel_data():
+    """Get data from cyber_incidents.xlsx"""
+    return get_excel_data("DATA/cyber_incidents.xlsx")
+
+
+def get_it_tickets_excel():
+    """Get data from IT tickets.xlsx"""
+    return get_excel_data("DATA/it_tickets.xlsx")
+
+
+def get_datasets_metadata():
+    """Get dataset datasets_metadata.xlsx"""
+    return get_excel_data("DATA/datasets_metadata.xlsx")
+
+
+def load_excel_to_database():
+    """Load data from Excel file"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Load cyber incidents from excel
+        cyber_df = get_cyber_excel_data()
+        if not cyber_df.empty:
+            cursor.execute("SELECT COUNT(*) FROM cyber_incidents")
+            count = cursor.fetchone()[0]
+
+            if count == 0:
+                cyber_df.to_sql("cyber_incidents", conn, if_exists="append", index=False)
+                return True, f"Loaded {len(cyber_df)} cyber incidents from Excel file"
+            else:
+                return False, "Data already loaded"
+
+        conn.commit()
+        conn.close()
+        return True, "Data loaded from Excel file"
+    except Exception as e:
+        return False, f"Error loading Excel data: {str(e)[:100]}"
+
+
+# Getting the database functions
 def get_db():
     return sqlite3.connect("DATA/intelligence_platform.db")
+
 
 def init_db():
     conn = get_db()
@@ -42,15 +99,17 @@ def init_db():
     conn.commit()
     conn.close()
 
-def check_login(u,p):
+
+def check_login(u, p):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT password_hash, role FROM users WHERE username=?",(u,))
+    cursor.execute("SELECT password_hash, role FROM users WHERE username=?", (u,))
     user = cursor.fetchone()
     conn.close()
     if user and bcrypt.checkpw(p.encode("utf-8"), user[0].encode("utf-8")):
         return True, user[1]
     return False, None
+
 
 def create_user(u, p, role="user"):
     if not u or not p or len(p) < 8 or ' ' in u or not u.isalnum():
@@ -58,19 +117,22 @@ def create_user(u, p, role="user"):
     conn = get_db()
     cursor = conn.cursor()
     if cursor.execute("SELECT username FROM users WHERE username=?", (u,)).fetchone():
-        return False, "Username already exits"
+        return False, "Username already exists"
     pw_hash = bcrypt.hashpw(p.encode("utf-8"), bcrypt.gensalt())
-    cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (u, pw_hash.decode("utf-8"), role))
+    cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                   (u, pw_hash.decode("utf-8"), role))
     conn.commit()
     conn.close()
     return True, "User created"
 
-#implementing the CRUD functions
+
+# Implementing the CRUD functions
 def get_incidents():
     conn = get_db()
     df = pd.read_sql_query("SELECT * FROM cyber_incidents ORDER BY id DESC", conn)
     conn.close()
     return df
+
 
 def get_incident_by_id(incident_id):
     conn = get_db()
@@ -80,26 +142,33 @@ def get_incident_by_id(incident_id):
     conn.close()
     return incident
 
+
 def add_incident_to_db(t, s, sts, d, u):
     if not t or not d:
         return False, "Required fields are missing"
-    conn= get_db()
+    conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO cyber_incidents (date, incident_type, severity, status, description, reported_by) VALUES (?, ?, ?, ?, ?, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), t, s, sts, d, u))
+    cursor.execute(
+        "INSERT INTO cyber_incidents (date, incident_type, severity, status, description, reported_by) VALUES (?, ?, ?, ?, ?, ?)",
+        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), t, s, sts, d, u))
     conn.commit()
     new_id = cursor.lastrowid
     conn.close()
     return True, new_id
 
-def update_incident(incident_id, incident_type, severity, status,description):
+
+def update_incident(incident_id, incident_type, severity, status, description):
     if not incident_type or not description:
         return False, "Required fields are missing"
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("UPDATE cyber_incidents SET incident_type = ?, severity = ?, status = ?, description = ? WHERE id = ?", (incident_type, severity, status, description, incident_id))
+    cursor.execute(
+        "UPDATE cyber_incidents SET incident_type = ?, severity = ?, status = ?, description = ? WHERE id = ?",
+        (incident_type, severity, status, description, incident_id))
     conn.commit()
     conn.close()
     return True, "Updated"
+
 
 def update_status(incident_id, status):
     conn = get_db()
@@ -109,6 +178,7 @@ def update_status(incident_id, status):
     conn.close()
     return True, "Status updated"
 
+
 def remove_incident(incident_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -117,11 +187,13 @@ def remove_incident(incident_id):
     conn.close()
     return True, "Deleted"
 
+
 def get_all_users():
     conn = get_db()
     df = pd.read_sql("SELECT id, username, role FROM users", conn)
     conn.close()
     return df
+
 
 def update_user_role(user_id, new_role):
     if new_role not in ["user", "analyst", "admin"]:
@@ -133,6 +205,7 @@ def update_user_role(user_id, new_role):
     conn.close()
     return True, "Role updated"
 
+
 def delete_user(user_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -140,6 +213,7 @@ def delete_user(user_id):
     conn.commit()
     conn.close()
     return True, "User deleted"
+
 
 def main():
     init_db()
@@ -153,7 +227,7 @@ def main():
                 p = st.text_input("Password", type="password")
                 if st.form_submit_button("Login"):
                     if u and p:
-                        success, role = check_login(u,p)
+                        success, role = check_login(u, p)
                         if success:
                             st.session_state.logged_in = True
                             st.session_state.user = u
@@ -191,25 +265,75 @@ def main():
         domain = st.sidebar.selectbox("Domain", ["Cyber", "Data", "IT"])
         page = st.sidebar.radio("Go to", ["Dashboard", "Incidents", "Analytics", "Admin"])
 
+        st.sidebar.divider()
+
+        st.sidebar.subheader("AI Assistant")
+        if st.sidebar.button("Gemini Interactive Chat"):
+            st.switch_page("pages/gemini_interactive.py")
+
+        # Logout button
+        st.sidebar.divider()
+        if st.sidebar.button("Logout"):
+            st.session_state.logged_in = False
+            st.session_state.user = None
+            st.session_state.role = None
+            st.rerun()
+
         data = get_incidents()
 
         if page == "Dashboard":
-            st.title("Dashboard")
-            #filtering logic
+            st.title(f"{domain} Dashboard")
+
+            # Get different data for each domain
             if domain == "Cyber":
-                filtered_data = data[data['incident_type'] == "Phishing"]
+                filtered_data = get_cyber_excel_data()
+                if filtered_data.empty:
+                    filtered_data = data  # Fallback to database
+                st.info("📊 Showing cyber incidents")
+
             elif domain == "Data":
-                filtered_data = data[data['severity'] == 'High']
-            else:
-                filtered_data = data
+                filtered_data = get_datasets_metadata()
+                if filtered_data.empty:
+                    filtered_data = pd.DataFrame()  # Empty if no data
+                st.info("📊 Showing datasets metadata")
+
+            else:  # IT domain
+                filtered_data = get_it_tickets_excel()
+                if filtered_data.empty:
+                    filtered_data = pd.DataFrame()  # Empty if no data
+                st.info("📊 Showing IT tickets")
+
+            # Smart metrics - SIMPLIFIED
             col1, col2, col3 = st.columns(3)
+
             with col1:
-                st.metric("Incidents" , len(filtered_data))
+                st.metric("Total Items", len(filtered_data))
+
             with col2:
-                st.metric("Serious", len(filtered_data[filtered_data['severity'].isin(['High','Critical'])]))
+                if not filtered_data.empty:
+                    if domain == "Cyber" and 'severity' in filtered_data.columns:
+                        serious = len(filtered_data[filtered_data['severity'].isin(['High', 'Critical'])])
+                        st.metric("Serious", serious)
+                    elif domain == "IT" and 'priority' in filtered_data.columns:
+                        high_priority = len(filtered_data[filtered_data['priority'] == 'High'])
+                        st.metric("High Priority", high_priority)
+                    else:
+                        st.metric("Items", len(filtered_data))
+                else:
+                    st.metric("Items", 0)
+
             with col3:
-                st.metric("Open", len(filtered_data[filtered_data['status'] == 'Open']))
-            st. dataframe(filtered_data.head(), use_container_width=True)
+                if not filtered_data.empty and 'status' in filtered_data.columns:
+                    open_items = len(filtered_data[filtered_data['status'] == 'Open'])
+                    st.metric("Open", open_items)
+                else:
+                    st.metric("Items", len(filtered_data))
+
+            # Show the data
+            if not filtered_data.empty:
+                st.dataframe(filtered_data.head(), use_container_width=True)
+            else:
+                st.warning(f"No data available for {domain} domain")
 
         elif page == "Incidents":
             if st.session_state.role not in ["admin", "analyst"]:
@@ -217,7 +341,7 @@ def main():
                 st.stop()
             st.title("Incident Management")
 
-            #adding a new incident
+            # Adding a new incident
             with st.form("add_incident"):
                 st.subheader("Add New incident")
                 col1, col2, col3 = st.columns(3)
@@ -238,7 +362,7 @@ def main():
 
             st.divider()
 
-            #update and delete operations
+            # Update and delete operations
             col1, col2 = st.columns(2)
             with col1:
                 with st.form("update_incident"):
@@ -250,9 +374,11 @@ def main():
                         col1_form, col2_form = st.columns(2)
                         with col1_form:
                             new_t = st.text_input("Type", value=incident[2])
-                            new_s = st.selectbox("Severity", ["Low", "Medium", "High", "Critical"], index=["Low", "Medium", "High", "Critical"].index(incident[3]))
+                            new_s = st.selectbox("Severity", ["Low", "Medium", "High", "Critical"],
+                                                 index=["Low", "Medium", "High", "Critical"].index(incident[3]))
                         with col2_form:
-                            new_sts = st.selectbox("Status", ["Open", "In Progress", "Resolved"],index=["Open", "In Progress", "Resolved"].index(incident[4]))
+                            new_sts = st.selectbox("Status", ["Open", "In Progress", "Resolved"],
+                                                   index=["Open", "In Progress", "Resolved"].index(incident[4]))
                         new_d = st.text_area("Description", value=incident[5])
 
                         if st.form_submit_button("Update Incident"):
@@ -266,7 +392,7 @@ def main():
             with col2:
                 with st.form("delete_incident"):
                     st.subheader("Delete Incident")
-                    del_incident_id =  st.selectbox("Select Incident", data['id'].tolist(), key="delete")
+                    del_incident_id = st.selectbox("Select Incident", data['id'].tolist(), key="delete")
                     incident = get_incident_by_id(del_incident_id)
 
                     if incident:
@@ -280,6 +406,7 @@ def main():
                             if success:
                                 st.success(msg)
                                 st.rerun()
+
         elif page == "Analytics":
             st.title("Analytics")
             if len(data) > 0:
@@ -313,7 +440,8 @@ def main():
                     st.write("**Update User Role**")
                     user_id = st.selectbox("Select User", users_data['id'].tolist(), key="user_update")
                     current_role = users_data[users_data['id'] == user_id]['role'].iloc[0]
-                    new_role = st.selectbox("New Role", ["user", "analyst", "admin"],index=["user", "analyst", "admin"].index(current_role))
+                    new_role = st.selectbox("New Role", ["user", "analyst", "admin"],
+                                            index=["user", "analyst", "admin"].index(current_role))
 
                     if st.button("Update Role"):
                         success, msg = update_user_role(user_id, new_role)
@@ -339,12 +467,6 @@ def main():
                     else:
                         st.info("No other users to delete")
 
-        #logout button
-        if st.sidebar.button("Logout"):
-            st.session_state.logged_in = False
-            st.session_state.user = None
-            st.session_state.role = None
-            st.rerun()
 
 if __name__ == "__main__":
     main()
