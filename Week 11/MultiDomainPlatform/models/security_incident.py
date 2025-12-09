@@ -1,45 +1,80 @@
-class SecurityIncident:
-    """Represents a cybersecurity incident in the platform"""
+import pandas as pd
+from .db import connect_database
 
-    def __init__(self, incident_id: int, incident_type: str, severity: str, status: str, description:str):
-        self.__id = incident_id
-        self.__incident_type = incident_type
-        self.__severity = severity
-        self.__status = status
-        self.__description = description
+class Incident:
+    """Manages cyber incident operations"""
 
-    def get_id(self) -> int:
-        return self.__id
+    def insert_incident(self, date, incident_type, severity, status, description, reported_by=None):
+        """Insert new incident"""
+        conn = connect_database()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO cyber_incidents (date, incident_type, severity, status, description, reported_by) VALUES (?, ?, ?, ?, ?, ?)",
+            (date, incident_type, severity, status, description, reported_by)
+        )
+        conn.commit()
+        incident_id = cursor.lastrowid
+        conn.close()
+        return incident_id
 
-    def get_incident_type(self) -> str:
-        return self.__incident_type
+    def get_all_incidents(self, conn):
+        """Get all incidents"""
+        df = pd.read_sql_query(
+            "SELECT * FROM cyber_incidents ORDER BY id DESC", conn
+        )
+        return df
 
-    def get_severity(self) -> str:
-        return self.__severity
+    def update_incident_status(self, conn, incident_id, new_status):
+        """Update the incident status"""
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE cyber_incidents SET status = ? WHERE id = ?",
+            (new_status, incident_id)
+        )
+        conn.commit()
+        return cursor.rowcount
 
-    def get_status(self) -> str:
-        return self.__status
+    def delete_incident(self, conn, incident_id):
+        """Delete incident"""
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM cyber_incidents WHERE id = ?",
+            (incident_id,)
+        )
+        conn.commit()
+        return cursor.rowcount
 
-    def get_description(self) -> str:
-        return self.__description
+    def get_incidents_by_type_count(self, conn):
+        """Count incidents by type"""
+        query = """
+        SELECT incident_type, COUNT(*) as count
+        FROM cyber_incidents
+        GROUP BY incident_type
+        ORDER BY count DESC
+        """
+        df = pd.read_sql_query(query, conn)
+        return df
 
-    def update_status(self, new_status: str) -> None:
-        """update the status of this incident"""
-        self.__status = new_status
+    def get_high_severity_by_status(self, conn):
+        """Count high severity incidents by status"""
+        query = """
+        SELECT status, COUNT(*) as count
+        FROM cyber_incidents
+        WHERE severity = 'High'
+        GROUP BY status
+        ORDER BY count DESC
+        """
+        df = pd.read_sql_query(query, conn)
+        return df
 
-    def get_severity_level(self) -> int:
-        """return an integer severity level"""
-        mapping = {
-            "low": 1,
-            "medium": 2,
-            "high": 3,
-            "critical": 4,
-        }
-        return mapping.get(self.__severity.lower(), 0)
-
-    def is_critical(self) -> bool:
-        """check if incident is critical"""
-        return self.get_severity_level() >= 3
-
-    def __str__(self) -> str:
-        return f"Incident #{self.__id} [{self.__severity.upper()}] {self.__incident_type}: {self.__description[:50]}..."
+    def get_incident_types_with_many_cases(self, conn, min_count=5):
+        """Find incident types with more than min_count cases"""
+        query = """
+        SELECT incident_type, COUNT(*) as count
+        FROM cyber_incidents
+        GROUP BY incident_type
+        HAVING COUNT(*) > ?
+        ORDER BY count DESC
+        """
+        df = pd.read_sql_query(query, conn, params=(min_count,))
+        return df

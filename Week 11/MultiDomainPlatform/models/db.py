@@ -1,4 +1,3 @@
-# database/db.py (keep it simple!)
 import sqlite3
 from pathlib import Path
 

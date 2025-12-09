@@ -1,43 +1,57 @@
+from .db import connect_database
+
 class User:
-    """Represents a user in the Multi Domain Platform."""
-    def __init__(self, username: str, password_hash: str, role: str):
-        self.__username = username
-        self.__password_hash = password_hash
-        self.__role = role
+    """Manages user operations"""
+    def __init__(self):
+        pass
 
-    def get_username(self) -> str:
-        """return the username"""
-        return self.__username
+    def get_user_by_username(self, username):
+        """retrieves user by username"""
+        conn = connect_database()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return user
 
-    def get_role(self) -> str:
-        """return the users role"""
-        return self.__role
+    def insert_user(self, username, password_hash, role="user"):
+        """inserts a new user"""
+        conn = connect_database()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+            (username, password_hash, role)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-    def get_password_hash(self) -> str:
-        """return the password hash for authentication"""
-        return self.__password_hash
+    def get_all_users(self):
+        """get all users"""
+        conn = connect_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users")
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return users
 
-    def verify_password(self, plain_password: str, hasher) -> bool:
-        """check if a plain-text password matches this users hash.
+    def update_user_role(self, username, role):
+        """updates user role"""
+        conn = connect_database()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET role = ? WHERE username = ?",
+            (role, username)
+        )
+        conn.commit()
+        conn.close()
+        cursor.close()
 
-        Args:
-            plain_password: the plain text password to check
-            hasher: an object with a 'check_password(plain, hashed)' method
 
-        Returns:
-            bool: True if the password matches, False otherwise"""
-        return hasher.check_password(plain_password, self.__password_hash)
-
-    def update_password(self, new_hash: str) -> None:
-        """update the users password hash"""
-        self.__password_hash = new_hash
-
-    def update_role(self, new_role: str) -> None:
-        """update the users role"""
-        self.__role = new_role
-
-    def __str__(self) -> str:
-        """string for the user"""
-        return f"User(username={self.__username}, role={self.__role})"
 
 
