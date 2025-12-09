@@ -14,7 +14,6 @@ if "user" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = None
 
-
 # Data access functions
 def get_excel_data(file_path):
     """Read data from Excel file"""
@@ -107,6 +106,21 @@ def check_login(u, p):
     if user and bcrypt.checkpw(p.encode("utf-8"), user[0].encode("utf-8")):
         return True, user[1]
     return False, None
+
+#password validation
+def validate_password(password):
+    """password check"""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    checks = [
+        any(c.isupper() for c in password),
+        any(c.islower() for c in password),
+        any(c.isdigit() for c in password),
+        any(not c.isalnum() for c in password)
+    ]
+    if sum(checks) < 3:
+        return False, "Password too weak - mix uppercase, lowercase, numbers, and symbols"
+    return True, "Password is strong"
 
 
 def create_user(u, p, role="user"):
@@ -284,19 +298,19 @@ def main():
             if domain == "Cyber":
                 filtered_data = get_cyber_excel_data()
                 if filtered_data.empty:
-                    filtered_data = data  # Fallback to database
+                    filtered_data = data
                 st.info("Showing cyber incidents")
 
             elif domain == "Data":
                 filtered_data = get_datasets_metadata()
                 if filtered_data.empty:
-                    filtered_data = pd.DataFrame()  # Empty if no data
+                    filtered_data = pd.DataFrame()
                 st.info("Showing datasets metadata")
 
             else:  # IT domain
                 filtered_data = get_it_tickets_excel()
                 if filtered_data.empty:
-                    filtered_data = pd.DataFrame()  # Empty if no data
+                    filtered_data = pd.DataFrame()
                 st.info("Showing IT tickets")
 
             # Smart metrics - SIMPLIFIED
