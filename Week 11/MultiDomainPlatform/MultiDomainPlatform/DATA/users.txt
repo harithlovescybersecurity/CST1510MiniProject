@@ -1,0 +1,2 @@
+alice,$2b$12$LdABDoZ/W09BwnXoQzayRupqu8ILrWJMealUC0/Fkk9H1q/t4LG.2
+Bob,$2b$12$IsF0jtu3TyeILcBHzd5VXu37OO8Wy52I0OIzNj9HD8cDcmfzDQxVO
