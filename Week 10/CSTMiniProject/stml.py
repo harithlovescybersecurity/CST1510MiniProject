@@ -650,7 +650,7 @@ def main():
                             f"• `{col}`: {analytics_data[col].dtype}, {len(analytics_data[col].dropna().unique())} unique values")
 
             else:
-                st.info(f"📭 No data available for {domain} analysis")
+                st.info(f"No data available for {domain} analysis")
                 st.write("Click **'Migrate Excel to DB'** in the sidebar to load your data")
 
         elif page == "Admin":
