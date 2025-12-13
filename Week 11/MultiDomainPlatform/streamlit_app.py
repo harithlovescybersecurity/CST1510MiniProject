@@ -24,8 +24,7 @@ class CyberSecurityAIAssistant:
         #set page config
         st.set_page_config(
             page_title="Cybersecurity AI Assistant",
-            page_icon="💬",
-            layout="wide",
+            page_icon="💬",            layout="wide",
         )
 
     def render_sidebar(self):
