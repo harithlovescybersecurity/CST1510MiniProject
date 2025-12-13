@@ -2,39 +2,18 @@ import random
 from apps.data.db import connect_database
 from apps.data.schema import create_all_tables
 from apps.services.user_service import register_user, login_user, migrate_users_from_file
-from apps.data.incidents import insert_incident, get_all_incidents, get_incidents_by_type_count, get_high_severity_by_status, get_incident_types_with_many_cases
+from apps.data.incidents import insert_incident, get_all_incidents, get_incidents_by_type_count, get_high_severity_by_status, get_incident_types_with_many_cases, update_incident_status, delete_incident
 from apps.data.csv_loader import load_all_csv_data
 
-def update_incident_status(conn, incident_id, new_status):
-    """Update the status od an incident"""
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE cyber_incidents SET status = ? WHERE id = ?",
-            (new_status, incident_id)
-        )
-        conn.commit()
-        return True, f"Incident {incident_id} status updated to {new_status}"
-    except Exception as e:
-        return False, f"Error updating incident: {e}"
-def delete_incident(conn, incident_id):
-    """Delete incident by ID"""
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM cyber_incidents WHERE id = ?", (incident_id,))
-        conn.commit()
-        return True, f"Incident {incident_id} deleted"
-    except Exception as e:
-        return False, f"Error deleting incident: {e}"
 def run_comprehensive_tests():
     """Run comprehensive tests on database"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("RUNNING COMPREHENSIVE TESTS")
-    print("="*60)
+    print("=" * 60)
 
     conn = connect_database()
 
-    # Test 1: Authenticate
+    # Test 1: Authentication
     print("\n[TEST 1] Authentication")
 
     unique_id = random.randint(1000, 9999)
@@ -45,31 +24,35 @@ def run_comprehensive_tests():
     success, msg = login_user(test_username, "TestPass123!")
     print(f" Login: {msg}")
 
-    #Test 2: CRUD Operations
+    # Test 2: CRUD Operations
     print("\n[TEST 2] CRUD Operations")
 
-    #Create
+    # Create - Define date and type variables
+    test_date = "2024-11-05"
+    test_incident_type = "Test Incident"
+
+    # INSERT - Still call it, but the id returned won't be useful
     test_id = insert_incident(
-        "2024-11-05",
-        "Test Incident",
+        test_date,  # Use variable
+        test_incident_type,  # Use variable
         "Low",
         "Open",
         "This is a test incident",
         test_username
     )
-    print(f" Create: Incident #{test_id} created")
+    print(f" Create: Incident created (Date: {test_date}, Type: {test_incident_type})")
 
-    #Read
-    incidents  = get_all_incidents(conn)
+    # Read
+    incidents = get_all_incidents(conn)
     print(f" Read: Found {len(incidents)} total incidents")
 
-    #Update
-    update_incident_status(conn, test_id, "Resolved")
-    print(f" Update: Status updated")
+    # Update - Use date and type instead of id
+    rows_updated = update_incident_status(conn, test_date, test_incident_type, "Resolved")
+    print(f" Update: {rows_updated} incident(s) updated")
 
-    #Delete
-    delete_incident(conn, test_id)
-    print(f" Delete: Incident deleted")
+    # Delete - Use date and type instead of id
+    rows_deleted = delete_incident(conn, test_date, test_incident_type)
+    print(f" Delete: {rows_deleted} incident(s) deleted")
 
     print("\n[TEST 3] Analytical Queries")
 
@@ -81,9 +64,9 @@ def run_comprehensive_tests():
 
     conn.close()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ALL TESTS PASSED!")
-    print("="*60)
+    print("=" * 60)
 
 def main():
     print("=" * 60)
