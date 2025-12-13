@@ -14,29 +14,38 @@ def insert_incident(date, incident_type, severity, status, description, reported
     conn.close()
     return incident_id
 
+
 def get_all_incidents(conn):
     """Get all incidents"""
-    df = pd.read_sql_query(
-    "SELECT * FROM cyber_incidents ORDER BY id DESC", conn
-    )
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(cyber_incidents)")
+    columns = cursor.fetchall()
+
+    column_names = [col[1] for col in columns]
+    if 'id' in column_names:
+        query = "SELECT * FROM cyber_incidents ORDER BY date DESC"
+    else:
+        query = "SELECT * FROM cyber_incidents"
+
+    df = pd.read_sql_query(query, conn)
     return df
 
-def update_incident_status(conn, incident_id, new_status):
-    """Update the incident status"""
+def update_incident_status(conn, date, incident_type, new_status):
+    """Update incident by date and type"""
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE cyber_incidents SET status = ? WHERE id = ?",
-        (new_status, incident_id)
+        "UPDATE cyber_incidents SET status = ? WHERE date = ? AND incident_type = ?",
+        (new_status, date, incident_type)
     )
     conn.commit()
     return cursor.rowcount
 
-def delete_incident(conn, incident_id):
-    """Delete incident"""
+def delete_incident(conn, date, incident_type):
+    """Delete incident by date and type"""
     cursor = conn.cursor()
     cursor.execute(
-        "DELETE FROM cyber_incidents WHERE id = ?",
-        (incident_id,)
+        "DELETE FROM cyber_incidents WHERE date = ? AND incident_type = ?",
+        (date, incident_type)
     )
     conn.commit()
     return cursor.rowcount
