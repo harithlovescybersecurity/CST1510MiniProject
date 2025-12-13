@@ -7,6 +7,8 @@ import os
 
 #page set up
 st.set_page_config(page_title="Security App", layout="wide")
+
+#initializing session state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user" not in st.session_state:
@@ -14,15 +16,18 @@ if "user" not in st.session_state:
 if "role" not in st.session_state:
     st.session_state.role = None
 
-# Data access functions
+#data access functions
 def get_excel_data(file_path):
     try:
+        #checks if the file exists
         if os.path.exists(file_path):
             df = pd.read_excel(file_path)
             return df
         else:
+            #if file doesnt exists it returns a empty dataframe
             return pd.DataFrame()
     except Exception as e:
+        #displays error message
         st.error(f"Error reading {file_path}: {str(e)[:100]}")
         return pd.DataFrame()
 
@@ -38,8 +43,10 @@ def get_it_tickets_excel():
 def get_datasets_metadata():
     return get_excel_data("DATA/datasets_metadata.xlsx")
 
+#data migration function
 def migrate_all_data():
     conn = get_db()
+    #checks for data to migrate
     cyber_df = get_cyber_excel_data()
     if not cyber_df.empty:
         if 'timestamp' in cyber_df.columns:
@@ -84,11 +91,11 @@ def migrate_all_data():
     st.success("Data migration complete!")
     return True
 
-
+#creates and returns SQL database
 def get_db():
     return sqlite3.connect("DATA/intelligence_platform.db")
 
-
+#creates data tables if they dont exist
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
@@ -132,7 +139,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-
+#authenticates user
 def check_login(u, p):
     conn = get_db()
     cursor = conn.cursor()
@@ -143,7 +150,7 @@ def check_login(u, p):
         return True, user[1]
     return False, None
 
-
+#creates a new user
 def create_user(u, p, role="user"):
     if not u or not p or len(p) < 8 or ' ' in u or not u.isalnum():
         return False, "Invalid input"
@@ -158,6 +165,7 @@ def create_user(u, p, role="user"):
     conn.close()
     return True, "User created"
 
+#retrieves all cyber incidents
 def get_incidents():
     try:
         conn = get_db()
@@ -178,6 +186,7 @@ def get_incidents():
         st.error(f"Error loading incidents: {str(e)[:100]}")
         return pd.DataFrame()
 
+#gets incidents based on ID
 def get_incident_by_id(incident_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -186,6 +195,7 @@ def get_incident_by_id(incident_id):
     conn.close()
     return incident
 
+#adds new cyber incident with current timestamp
 def add_incident_to_db(t, s, sts, d, u):
     if not t or not d:
         return False, "Required fields are missing"
@@ -199,6 +209,7 @@ def add_incident_to_db(t, s, sts, d, u):
     conn.close()
     return True, new_id
 
+#updates existing incident details
 def update_incident(incident_id, incident_type, severity, status, description):
     if not incident_type or not description:
         return False, "Required fields are missing"
@@ -211,7 +222,7 @@ def update_incident(incident_id, incident_type, severity, status, description):
     conn.close()
     return True, "Updated"
 
-
+#updates only the status of the incident
 def update_status(incident_id, status):
     conn = get_db()
     cursor = conn.cursor()
@@ -220,7 +231,7 @@ def update_status(incident_id, status):
     conn.close()
     return True, "Status updated"
 
-
+#deletes incidents from database
 def remove_incident(incident_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -229,7 +240,7 @@ def remove_incident(incident_id):
     conn.close()
     return True, "Deleted"
 
-
+#gets all user for admin view
 def get_all_users():
     try:
         conn = get_db()
@@ -239,7 +250,7 @@ def get_all_users():
     except:
         return pd.DataFrame()
 
-
+#gets all IT tickets from database
 def get_it_tickets_db():
     try:
         conn = get_db()
@@ -249,7 +260,7 @@ def get_it_tickets_db():
     except:
         return pd.DataFrame()
 
-
+#creates new IT ticket
 def add_it_ticket(title, category, priority):
     conn = get_db()
     cursor = conn.cursor()
@@ -261,7 +272,7 @@ def add_it_ticket(title, category, priority):
     conn.close()
     return True
 
-
+#gets all datasets metadata from database
 def get_datasets_metadata_db():
     try:
         conn = get_db()
@@ -271,7 +282,7 @@ def get_datasets_metadata_db():
     except:
         return pd.DataFrame()
 
-
+#adds new datasets entry
 def add_datasets_metadata(name, asset_type, classification, owner):
     conn = get_db()
     cursor = conn.cursor()
@@ -282,7 +293,7 @@ def add_datasets_metadata(name, asset_type, classification, owner):
     conn.close()
     return True
 
-
+#updates user role
 def update_user_role(user_id, new_role):
     if new_role not in ["user", "analyst", "admin"]:
         return False, "Invalid role"
@@ -293,7 +304,7 @@ def update_user_role(user_id, new_role):
     conn.close()
     return True, "Role updated"
 
-
+#deletes user
 def delete_user(user_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -302,7 +313,7 @@ def delete_user(user_id):
     conn.close()
     return True, "User deleted"
 
-
+#main application for authentication and navigation
 def main():
     init_db()
     conn = get_db()
@@ -315,6 +326,7 @@ def main():
         conn.commit()
         print("Created default user")
     conn.close()
+    #login page
     if not st.session_state.logged_in:
         st.title("🔐 Login")
         tab1, tab2 = st.tabs(["Login", "Register"])
@@ -356,8 +368,9 @@ def main():
                             st.rerun()
                         else:
                             st.error(msg)
-
+    #main application when your logged in
     else:
+        #sidebar with navigation
         st.sidebar.title(f"Hi {st.session_state.user}")
         st.sidebar.text(f"Role: {st.session_state.role}")
 
@@ -367,14 +380,14 @@ def main():
 
         domain = st.sidebar.selectbox("Domain", ["Cyber", "Data", "IT"])
         page = st.sidebar.radio("Go to", ["Dashboard", "Incidents", "Analytics", "Admin"])
-
+        #AI Assistant
         st.sidebar.divider()
         st.sidebar.subheader("AI Assistant")
         if st.sidebar.button("Gemini Interactive Chat"):
             st.switch_page("pages/gemini_interactive.py")
 
         data = get_incidents()
-
+        #dashboard page
         if page == "Dashboard":
             st.title(f"{domain} Dashboard")
 
@@ -454,7 +467,7 @@ def main():
                     st.metric("Open Items", open_items)
                 else:
                     st.metric("Records", len(metrics_data) if not metrics_data.empty else 0)
-
+        #incidents page
         elif page == "Incidents":
             if st.session_state.role not in ["admin", "analyst"]:
                 st.error("Access denied: Analyst or Admin role required")
@@ -464,7 +477,7 @@ def main():
             incident_ids = []
             if not data.empty and "id" in data.columns:
                 incident_ids = data["id"].tolist()
-
+            #adding new incidents
             with st.form("add_incident"):
                 st.subheader("Add New incident")
                 col1, col2, col3 = st.columns(3)
@@ -485,7 +498,7 @@ def main():
                         st.error(result)
 
             st.divider()
-
+            #update/delete functions
             if incident_ids:
                 col1, col2 = st.columns(2)
                 with col1:
@@ -530,10 +543,10 @@ def main():
                                     st.rerun()
             else:
                 st.info("No new incidents found")
-
+        #analytic page
         elif page == "Analytics":
             st.title(f"{domain} Analytics")
-
+            #domain specific data
             if domain == "Cyber":
                 analytics_data = get_incidents()
             elif domain == "Data":
@@ -652,7 +665,7 @@ def main():
             else:
                 st.info(f"No data available for {domain} analysis")
                 st.write("Click **'Migrate Excel to DB'** in the sidebar to load your data")
-
+        #admin page
         elif page == "Admin":
             if st.session_state.role != "admin":
                 st.error("Access denied: Admin role required")
@@ -697,7 +710,7 @@ def main():
                                 st.error(msg)
                     else:
                         st.info("No other users to delete")
-
+        #logout
         st.sidebar.divider()
         if st.sidebar.button("Logout"):
             st.session_state.logged_in = False
@@ -705,6 +718,6 @@ def main():
             st.session_state.role = None
             st.rerun()
 
-
+#start the application
 if __name__ == "__main__":
     main()
